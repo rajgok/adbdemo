@@ -1,4 +1,6 @@
 // Databricks notebook source
+// Session configuration
+
 val appID = "4883b6ef-201c-49d0-8505-e94f64668d29"
 val password = "5FkrM1wexR0aY_kzeP:Pa6r+cHCEFGz/"
 val fileSystemName = "rakanc-fsname"
@@ -15,6 +17,7 @@ spark.conf.set("fs.azure.createRemoteFileSystemDuringInitialization", "false")
 
 // COMMAND ----------
 
+// Account configuration
 val storageAccountName = "adlgen2sa"
 val appID = "4883b6ef-201c-49d0-8505-e94f64668d29"
 val password = "5FkrM1wexR0aY_kzeP:Pa6r+cHCEFGz/"
@@ -32,13 +35,17 @@ spark.conf.set("fs.azure.createRemoteFileSystemDuringInitialization", "false")
 
 // COMMAND ----------
 
-// MAGIC %sh wget -P /tmp https://raw.githubusercontent.com/Azure/usql/master/Examples/Samples/Data/json/radiowebsite/small_radio_json.json
+// Ingest sample data into the Azure Data Lake Storage Gen2 account
+
+%sh wget -P /tmp https://raw.githubusercontent.com/Azure/usql/master/Examples/Samples/Data/json/radiowebsite/small_radio_json.json
 
 // COMMAND ----------
 
 dbutils.fs.cp("file:///tmp/small_radio_json.json", "abfss://" + fileSystemName + "@" + storageAccountName + ".dfs.core.windows.net/")
 
 // COMMAND ----------
+
+// Extract data from the Azure Data Lake Storage Gen2 account
 
 val df = spark.read.json("abfss://"+ fileSystemName + "@" + storageAccountName + ".dfs.core.windows.net/small_radio_json.json")
 
@@ -50,13 +57,16 @@ specificColumnsDf.show()
 
 // COMMAND ----------
 
+// Transform data in Azure Databricks
+
 val renamedColumnsDF = specificColumnsDf.withColumnRenamed("level", "subscription_type")
 renamedColumnsDF.show()
 
 // COMMAND ----------
 
+// Load data into Azure SQL Data Warehouse
 val blobStorage = "rakancsa.blob.core.windows.net"
-val blobContainer = "rakancsa"
+val blobContainer = "rakancblob"
 val blobAccessKey =  "b02ncGtrKH79UgJUv1C1Kd+hn5Zu7VUKSBK0jGiGSY+LK0d1HEl6xfJ6vGy8aVbxVSzLcdcpdyWomg1wV5ffBQ=="
 
 // COMMAND ----------
@@ -76,3 +86,17 @@ val dwJdbcPort =  "1433"
 val dwJdbcExtraOptions = "encrypt=true;trustServerCertificate=true;hostNameInCertificate=*.database.windows.net;loginTimeout=30;"
 val sqlDwUrl = "jdbc:sqlserver://" + dwServer + ":" + dwJdbcPort + ";database=" + dwDatabase + ";user=" + dwUser+";password=" + dwPass + ";$dwJdbcExtraOptions"
 val sqlDwUrlSmall = "jdbc:sqlserver://" + dwServer + ":" + dwJdbcPort + ";database=" + dwDatabase + ";user=" + dwUser+";password=" + dwPass
+
+// COMMAND ----------
+
+spark.conf.set(
+    "spark.sql.parquet.writeLegacyFormat",
+    "true")
+
+renamedColumnsDF.write.format("com.databricks.spark.sqldw")
+.option("url", sqlDwUrlSmall)
+.option("dbtable", "SampleTable")       
+.option( "forward_spark_azure_storage_credentials","True")
+.option("tempdir", tempDir)
+.mode("overwrite")
+.save()
