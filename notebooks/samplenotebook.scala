@@ -35,9 +35,7 @@ spark.conf.set("fs.azure.createRemoteFileSystemDuringInitialization", "false")
 
 // COMMAND ----------
 
-// Ingest sample data into the Azure Data Lake Storage Gen2 account
-
-%sh wget -P /tmp https://raw.githubusercontent.com/Azure/usql/master/Examples/Samples/Data/json/radiowebsite/small_radio_json.json
+// MAGIC %sh wget -P /tmp https://raw.githubusercontent.com/Azure/usql/master/Examples/Samples/Data/json/radiowebsite/small_radio_json.json
 
 // COMMAND ----------
 
